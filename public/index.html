@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>小鹅通已购课程下载工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", sans-serif; background: #f5f6fa; color: #2d3436; }
+  header { background: #2c3e50; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .spacer { flex: 1; }
+  .btn { border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; background: #0984e3; color: #fff; }
+  .btn:hover { opacity: .88; }
+  .btn.green { background: #00b894; } .btn.gray { background: #636e72; } .btn.warn { background: #d63031; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  main { max-width: 1180px; margin: 20px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+  .login-row { display: flex; align-items: center; gap: 12px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #b2bec3; }
+  .status-dot.on { background: #00b894; }
+  .hint { color: #636e72; font-size: 12.5px; }
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  input[type=text] { flex: 1; padding: 8px 12px; border: 1px solid #dfe6e9; border-radius: 6px; font-size: 13px; }
+  .courses { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; }
+  .course { border: 1.5px solid #eef0f3; border-radius: 8px; padding: 12px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+  .course:hover { border-color: #74b9ff; }
+  .course.sel { border-color: #0984e3; background: #f0f8ff; }
+  .course input { margin-top: 3px; }
+  .course .meta { flex: 1; }
+  .course .t { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .course .s { font-size: 12px; color: #636e72; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: #dfe6e9; margin-left: 6px; }
+  .badge.b8 { background: #ffeaa7; } .badge.b6 { background: #a29bfe; color: #fff; } .badge.b3 { background: #55efc4; }
+  #videoPanel { display: none; }
+  .vhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .vlist { max-height: 420px; overflow: auto; border: 1px solid #eef0f3; border-radius: 8px; }
+  .vgroup { padding: 8px 12px; background: #f8f9fa; font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; position: sticky; top: 0; }
+  .vitem { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-top: 1px solid #f1f2f6; font-size: 13px; }
+  .vitem .col-ind { flex: 1; }
+  .vitem .job { font-size: 11.5px; min-width: 210px; }
+  .pbar { height: 6px; background: #eef0f3; border-radius: 4px; overflow: hidden; }
+  .pbar > div { height: 100%; background: #0984e3; transition: width .3s; }
+  .pbar.done > div { background: #00b894; } .pbar.fail > div { background: #d63031; }
+  .loading { color: #0984e3; font-size: 13px; padding: 10px 0; }
+  .err { color: #d63031; font-size: 13px; padding: 8px 0; }
+  .empty { color: #b2bec3; text-align: center; padding: 30px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>小鹅通已购课程下载工具</h1>
+  <div class="spacer"></div>
+  <span class="hint" id="dlDir"></span>
+</header>
+<main>
+  <div class="card">
+    <div class="login-row">
+      <span class="status-dot" id="dot"></span>
+      <b id="loginText">未登录</b>
+      <button class="btn" id="btnLogin">打开浏览器登录</button>
+      <button class="btn gray" id="btnLogout">退出登录</button>
+      <span class="hint" id="loginHint">登录 study.xiaoe-tech.com（验证码/微信/密码均可），登录成功后窗口自动关闭</span>
+    </div>
+  </div>
+
+  <div class="card" id="courseCard" style="display:none">
+    <div class="toolbar">
+      <b>我的已购课程</b>
+      <input type="text" id="search" placeholder="搜索课程/店铺...">
+      <button class="btn gray" id="btnRefresh">刷新</button>
+      <button class="btn green" id="btnLoadVideos">获取所选课程目录</button>
+      <span class="hint">支持：视频课 / 专栏 / 大专栏</span>
+    </div>
+    <div class="courses" id="courses"><div class="empty">暂无数据</div></div>
+  </div>
+
+  <div class="card" id="videoPanel">
+    <div class="vhead">
+      <b id="vpTitle">课程目录</b>
+      <span class="hint" id="vpCount"></span>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn gray" id="btnSelAll">全选</button>
+      <button class="btn gray" id="btnSelNone">取消全选</button>
+      <button class="btn green" id="btnDownload">下载所选</button>
+      <button class="btn warn" id="btnCloseVp">关闭</button>
+    </div>
+    <div class="vlist" id="vlist"></div>
+  </div>
+
+  <div class="card" id="jobCard" style="display:none">
+    <b>下载任务</b>
+    <div id="jobs" style="margin-top:10px"></div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let selectedCourses = new Set();
+let curVideos = [];
+
+async function api(p, body) {
+  const r = await fetch(p, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+
+// ---- 登录 ----
+async function refreshLogin() {
+  try {
+    const s = await api('/api/login/status');
+    $('dot').className = 'status-dot' + (s.loggedIn ? ' on' : '');
+    $('loginText').textContent = s.loggedIn ? '已登录（study.xiaoe-tech.com）' : '未登录';
+    $('courseCard').style.display = s.loggedIn ? 'block' : 'none';
+    if (s.loggedIn && !$('courses').dataset.loaded) loadCourses();
+    return s;
+  } catch (e) {}
+}
+$('btnLogin').onclick = async () => { $('loginHint').textContent = '浏览器窗口已打开，请完成登录...'; await api('/api/login/open', {}); };
+$('btnLogout').onclick = async () => { await api('/api/logout', {}); location.reload(); };
+
+// ---- 课程列表 ----
+function courseType(t) { return { 8: ['大专栏', 'b8'], 6: ['专栏', 'b6'], 3: ['视频', 'b3'], 25: ['课程', ''], 50: ['课程', ''], 2: ['音频', ''], 1: ['图文', ''] }[t] || ['其他' + t, '']; }
+function renderCourses(filter) {
+  const box = $('courses'); box.innerHTML = '';
+  const list = (state_courses || []).filter(c => !filter || (c.title + c.shop).toLowerCase().includes(filter.toLowerCase()));
+  if (!list.length) { box.innerHTML = '<div class="empty">无匹配课程</div>'; return; }
+  for (const c of list) {
+    const [tn, tc] = courseType(c.type);
+    const div = document.createElement('div');
+    div.className = 'course' + (selectedCourses.has(c.rid) ? ' sel' : '');
+    div.innerHTML = `<input type="checkbox" ${selectedCourses.has(c.rid) ? 'checked' : ''}>
+      <div class="meta"><div class="t">${c.title}<span class="badge ${tc}">${tn}</span></div>
+      <div class="s">店铺：${c.shop} ｜ 进度 ${c.progress}%</div></div>`;
+    div.onclick = e => {
+      if (e.target.type !== 'checkbox' && e.target.tagName !== 'INPUT') {
+        selectedCourses.has(c.rid) ? selectedCourses.delete(c.rid) : selectedCourses.add(c.rid);
+      } else if (e.target.type === 'checkbox') { selectedCourses.add(c.rid); }
+      div.classList.toggle('sel', selectedCourses.has(c.rid));
+    };
+    box.appendChild(div);
+  }
+}
+let state_courses = [];
+async function loadCourses(refresh) {
+  $('courses').innerHTML = '<div class="loading">正在获取已购列表...</div>';
+  try {
+    const r = await api('/api/courses' + (refresh ? '?refresh=1' : ''));
+    state_courses = r.courses || [];
+    $('courses').dataset.loaded = '1';
+    renderCourses($('search').value.trim());
+  } catch (e) { $('courses').innerHTML = '<div class="err">' + e.message + '</div>'; }
+}
+$('btnRefresh').onclick = () => { selectedCourses.clear(); loadCourses(true); };
+$('search').oninput = e => renderCourses(e.target.value.trim());
+
+// ---- 课程目录 ----
+$('btnLoadVideos').onclick = async () => {
+  if (!selectedCourses.size) return alert('请先勾选课程');
+  const rid = [...selectedCourses][0];
+  const c = state_courses.find(x => x.rid === rid);
+  $('videoPanel').style.display = 'block';
+  $('vpTitle').textContent = c.title;
+  $('vlist').innerHTML = '<div class="loading">正在解析目录（大专栏需要逐个拉取子课程，请稍候）...</div>';
+  $('btnLoadVideos').disabled = true;
+  try {
+    const r = await api('/api/course/videos', { rid });
+    curVideos = r.videos || [];
+    renderVideos(curVideos);
+  } catch (e) { $('vlist').innerHTML = '<div class="err">' + e.message + '</div>'; }
+  $('btnLoadVideos').disabled = false;
+};
+function renderVideos(vs) {
+  $('vpCount').textContent = `共 ${vs.length} 个视频`;
+  const box = $('vlist'); box.innerHTML = '';
+  const groups = {};
+  for (const v of vs) (groups[v.colTitle] = groups[v.colTitle] || []).push(v);
+  for (const [col, items] of Object.entries(groups)) {
+    const g = document.createElement('div');
+    g.className = 'vgroup';
+    g.innerHTML = `<span>${col}（${items.length}）</span><a href="javascript:;" data-col="${col}" style="font-weight:400">反选本组</a>`;
+    g.querySelector('a').onclick = () => {
+      const all = items.every(v => v._sel);
+      items.forEach(v => v._sel = !all);
+      renderVideos(curVideos);
+    };
+    box.appendChild(g);
+    for (const v of items) {
+      const job = jobMap[v.rid];
+      const d = document.createElement('div');
+      d.className = 'vitem';
+      d.innerHTML = `<input type="checkbox" ${v._sel ? 'checked' : ''}><span class="col-ind">${v.title}</span>${job ? jobHtml(job) : ''}`;
+      d.querySelector('input').onchange = e => { v._sel = e.target.checked; };
+      box.appendChild(d);
+    }
+  }
+}
+function jobHtml(j) {
+  const cls = j.status === 'done' ? 'done' : j.status === 'failed' ? 'fail' : '';
+  const txt = { queued: '排队中', harvesting: j.message || '解析地址', downloading: `下载中 ${j.pct}%`, done: '完成 ' + (j.size || ''), failed: '失败: ' + (j.message || '') }[j.status] || j.status;
+  const retry = j.status === 'failed' ? ` <a href="javascript:;" class="retry" data-rid="${j.rid}">重试</a>` : '';
+  return `<div class="job"><div class="pbar ${cls}"><div style="width:${j.status === 'done' ? 100 : j.pct}%"></div></div><div>${txt}${retry}</div></div>`;
+}
+$('btnSelAll').onclick = () => { curVideos.forEach(v => v._sel = true); renderVideos(curVideos); };
+$('btnSelNone').onclick = () => { curVideos.forEach(v => v._sel = false); renderVideos(curVideos); };
+$('btnCloseVp').onclick = () => { $('videoPanel').style.display = 'none'; };
+
+// ---- 下载 ----
+let jobMap = {};
+$('btnDownload').onclick = async () => {
+  const sel = curVideos.filter(v => v._sel);
+  if (!sel.length) return alert('请勾选要下载的视频');
+  const r = await api('/api/download', { videos: sel });
+  pollJobs();
+  renderVideos(curVideos);
+};
+$('jobs').addEventListener('click', async e => {
+  if (e.target.classList.contains('retry')) {
+    await api('/api/retry', { rid: e.target.dataset.rid });
+  }
+});
+async function pollJobs() {
+  try {
+    const r = await api('/api/progress');
+    jobMap = {};
+    for (const [rid, j] of Object.entries(r.jobs || {})) jobMap[rid] = { ...j, rid };
+    const list = Object.values(jobMap);
+    $('jobCard').style.display = list.length ? 'block' : 'none';
+    $('jobs').innerHTML = list.map(j => `
+      <div style="padding:6px 0;border-bottom:1px solid #f1f2f6;font-size:13px">
+        <b>${j.course}</b> / ${j.title} ${jobHtml(j)}
+      </div>`).join('');
+    if (curVideos.length) renderVideos(curVideos);
+  } catch (e) {}
+}
+setInterval(pollJobs, 2500);
+setInterval(refreshLogin, 4000);
+refreshLogin();
+fetch('/api/dldir').then(r => r.json()).then(j => $('dlDir').textContent = '下载目录: ' + j.dir).catch(() => {});
+</script>
+</body>
+</html>

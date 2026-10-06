@@ -1,0 +1,11 @@
+# 运行时/敏感文件
+node_modules/
+profile/
+downloads/
+tmp_ts/
+cookies.json
+state.json
+server.log
+*.log
+*.tmp.ts
+seed_cookies.json
