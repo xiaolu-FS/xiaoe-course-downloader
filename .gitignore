@@ -1,0 +1,14 @@
+﻿# 运行时/敏感文件（不要提交）
+node_modules/
+profile/
+profile-login/
+downloads/
+tmp_ts/
+settings.json
+cookies.json
+state.json
+server.log
+*.log
+*.tmp.ts
+*.part
+seed_cookies.json
