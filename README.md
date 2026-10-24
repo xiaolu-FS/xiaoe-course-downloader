@@ -10,16 +10,36 @@
 4. 勾选课程 → 点「获取所选课程目录」→ 勾选要下载的视频 → 点「下载所选」
 5. 在下方「下载任务」面板查看实时进度，失败的任务可点「重试」
 
+## 并发设置
+
+登录卡片下方可配置：
+
+- **同时下载视频数**：1~8，默认 2
+- **单视频分段线程**：1~16，默认 4
+
+修改后自动保存到 `settings.json`，对之后开始的任务生效。
+
 ## 说明
 
-- 下载目录：`xiaoe-tool/downloads/课程名/子专栏/视频名.mp4`（720p H264+AAC）
+- 下载目录：`downloads/课程名/子专栏/视频名.mp4`（720p H264+AAC）
 - 登录态保存在 `cookies.json` + `profile/`，重启工具无需重新登录，直到 cookie 过期后重新登录即可
-- 支持：视频（type 3）、专栏（type 6）、大专栏（type 8）；图文/音频/直播类暂不支持
-- 视频流为 AES-128 加密 HLS，工具自动解密合并；下载速度取决于 CDN，一般每分钟 50~80MB
-- 同名且大于 1MB 的文件会自动跳过，支持中断后续传
+- 支持：视频（type 3）、专栏（type 6）、大专栏（type 8）
+- 其他类型（普通课程 type 25/50 等）走通用解析：打开课程页嗅探目录接口，并对分页/章节懒加载逐页补全；仍不全时可点「强制重新解析」
+- 视频流为 AES-128 加密 HLS，工具自动解密、多线程分段下载后合并；同名且大于 1MB 的文件会自动跳过
 
 ## 依赖
 
-- Windows + Chrome（自动调用系统 Chrome）
-- Node.js 18+
-- ffmpeg（固定路径 C:/ffmpeg/bin/ffmpeg.exe，如不同请改 lib/hls.js 中的 FFMPEG 常量）
+- Windows + Chrome（自动查找 Chrome，找不到用 Edge；可用环境变量 `CHROME_PATH` 指定）
+- Node.js 18+（`playwright-core` 由启动脚本首次运行自动安装）
+- ffmpeg（默认路径 `C:/ffmpeg/bin/ffmpeg.exe`，如不同请改 `lib/hls.js` 中的 `FFMPEG` 常量）
+
+## 目录
+
+```
+server.js          本地服务 + 登录/目录解析/下载队列
+lib/hls.js         HLS 清单解析、AES-128 解密、多线程分段下载
+public/index.html  网页界面
+启动工具.bat        启动脚本（自动装依赖）
+```
+
+不提交到仓库：`node_modules/`、`profile*/`、`downloads/`、`cookies.json`、`state.json`、`settings.json`
